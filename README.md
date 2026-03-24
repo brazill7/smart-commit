@@ -30,6 +30,14 @@ Before installing, ensure your machine meets the hardware and software requireme
 pip3 install fm-smart-commit
 ```
 
+### Updating
+
+To update to the latest version of fm-smart-commit, run:
+
+```bash
+pip3 install --upgrade fm-smart-commit
+```
+
 ### From Source
 
 ```bash
@@ -111,7 +119,7 @@ Committed successfully!
 
 - `y` - Accept and commit
 - `n` - Abort
-- `r` - Retry (up to 3 attempts)
+- `r` - Retry (infinite retries, automatically uses context from the last 3 rejected messages)
 
 ---
 
@@ -121,7 +129,7 @@ Committed successfully!
 - **Privacy-First:** All processing happens locally on your Mac
 - **Zero Config:** Works out of the box with Apple Intelligence
 - **Two Modes:** Quick (fast) or Detailed (multi-pass parallel analysis)
-- **Retry Support:** Re-generate commits up to 3 times
+- **Smart Retries:** Infinite retries that learn from your rejections to improve the next suggestion
 
 ---
 
