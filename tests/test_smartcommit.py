@@ -2,11 +2,12 @@ import unittest
 import asyncio
 from unittest.mock import patch, MagicMock, AsyncMock
 import subprocess
+import os
 import sys
 from io import StringIO
 import importlib.util
 
-sys.path.insert(0, '..')
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../src')))
 
 spec = importlib.util.find_spec('apple_fm_sdk')
 if spec is None:
@@ -20,6 +21,7 @@ from smartcommit import (
     analyze_changes,
     synthesize_message,
     commit_flow,
+    clean_diff,
 )
 
 
@@ -45,6 +47,30 @@ class MockSystemLanguageModel:
         return True, ""
 
 
+class TestCleanDiff(unittest.TestCase):
+    def test_clean_diff_removes_unwanted_lines(self):
+        raw_diff = "diff --git a/src/main.py b/src/main.py\n" \
+                   "index 83db48f..1a2b3c4 100644\n" \
+                   "--- a/src/main.py\n" \
+                   "+++ b/src/main.py\n" \
+                   "@@ -10,5 +10,6 @@ def existing_func():\n" \
+                   "     pass\n" \
+                   " \n" \
+                   "+def new_func():\n" \
+                   "+    print('Hello')\n" \
+                   "-    print('Old')\n" \
+                   "     return True\n"
+        
+        expected = "diff --git a/src/main.py b/src/main.py\n" \
+                   "--- a/src/main.py\n" \
+                   "+++ b/src/main.py\n" \
+                   "+def new_func():\n" \
+                   "+    print('Hello')\n" \
+                   "-    print('Old')"
+        
+        cleaned = clean_diff(raw_diff)
+        self.assertEqual(cleaned, expected)
+
 class TestQuickMode(unittest.IsolatedAsyncioTestCase):
     @patch('smartcommit.subprocess.run')
     @patch('smartcommit.fm.SystemLanguageModel')
@@ -52,7 +78,7 @@ class TestQuickMode(unittest.IsolatedAsyncioTestCase):
     def test_quick_mode_no_staged_changes(self, mock_session, mock_model, mock_run):
         mock_run.return_value = MagicMock(stdout="")
         
-        result = asyncio.run(quick_mode())
+        result = asyncio.run(quick_mode(""))
         
         self.assertIsNone(result)
 
@@ -64,7 +90,7 @@ class TestQuickMode(unittest.IsolatedAsyncioTestCase):
         mock_model.return_value = MockSystemLanguageModel()
         mock_session.return_value = MockLanguageModelSession()
         
-        result = asyncio.run(quick_mode())
+        result = asyncio.run(quick_mode("diff stat\n\n+ def new_func(): pass"))
         
         self.assertIsNotNone(result)
         self.assertIn("feat:", result)
@@ -77,7 +103,7 @@ class TestQuickMode(unittest.IsolatedAsyncioTestCase):
         mock_model.return_value = MockSystemLanguageModel()
         mock_session.return_value = MockLanguageModelSession()
         
-        result = asyncio.run(quick_mode(developer_context="fixes ticket #123"))
+        result = asyncio.run(quick_mode("diff stat\n\n+ def new_func(): pass", developer_context="fixes ticket #123"))
         
         self.assertIsNotNone(result)
 
@@ -89,7 +115,7 @@ class TestDetailedMode(unittest.IsolatedAsyncioTestCase):
     def test_detailed_mode_no_staged(self, mock_session, mock_model, mock_run):
         mock_run.return_value = MagicMock(stdout="")
         
-        result = asyncio.run(detailed_mode())
+        result = asyncio.run(detailed_mode(""))
         
         self.assertIsNone(result)
 
@@ -101,7 +127,7 @@ class TestDetailedMode(unittest.IsolatedAsyncioTestCase):
         mock_model.return_value = MockSystemLanguageModel()
         mock_session.return_value = MockLanguageModelSession()
         
-        result = asyncio.run(detailed_mode())
+        result = asyncio.run(detailed_mode("diff stat\n\n+ def new_func(): pass"))
         
         self.assertIsNotNone(result)
         self.assertIn("feat:", result)
@@ -185,7 +211,7 @@ class TestCommitFlow(unittest.IsolatedAsyncioTestCase):
         
         asyncio.run(commit_flow(quick=True))
         
-        self.assertEqual(mock_run.call_count, 1)
+        self.assertEqual(mock_run.call_count, 2)
 
     @patch('smartcommit.subprocess.run')
     @patch('smartcommit.input', side_effect=['r', 'y'])
@@ -204,7 +230,7 @@ class TestCommitFlow(unittest.IsolatedAsyncioTestCase):
 class TestCLIParsing(unittest.TestCase):
     def test_quick_flag_parsing(self):
         with patch('sys.argv', ['smartcommit.py', '-q']):
-            from smartcommit import argparse
+            import argparse
             parser = argparse.ArgumentParser()
             parser.add_argument('-q', '--quick', action='store_true')
             args = parser.parse_args()
@@ -212,7 +238,7 @@ class TestCLIParsing(unittest.TestCase):
 
     def test_context_flag_parsing(self):
         with patch('sys.argv', ['smartcommit.py', '-c', 'test context']):
-            from smartcommit import argparse
+            import argparse
             parser = argparse.ArgumentParser()
             parser.add_argument('-c', '--context', type=str)
             args = parser.parse_args()
@@ -220,7 +246,7 @@ class TestCLIParsing(unittest.TestCase):
 
     def test_combined_flags(self):
         with patch('sys.argv', ['smartcommit.py', '-q', '-c', 'test']):
-            from smartcommit import argparse
+            import argparse
             parser = argparse.ArgumentParser()
             parser.add_argument('-q', '--quick', action='store_true')
             parser.add_argument('-c', '--context', type=str)
