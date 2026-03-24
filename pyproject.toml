@@ -3,8 +3,8 @@ requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "smart-commit"
-version = "1.1.0"
+name = "fm-smart-commit"
+version = "1.1.1"
 description = "AI-powered Git commit message generator using Apple Intelligence"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -27,7 +27,7 @@ dependencies = [
 ]
 
 [project.scripts]
-smartcommit = "smartcommit:main"
+fm-smart-commit = "smartcommit:main"
 
 [project.optional-dependencies]
 dev = [
